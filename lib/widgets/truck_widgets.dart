@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:voxel_truck/data/mock_data.dart';
 import 'package:voxel_truck/models/truck.dart';
+import 'package:voxel_truck/state/display_settings_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
+import 'package:voxel_truck/utils/unit_formatter.dart';
 import 'package:voxel_truck/widgets/modern_surface.dart';
 
 class StatusBadge extends StatelessWidget {
@@ -162,6 +164,7 @@ class OccupancyGauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
     final clamped = percent.clamp(0, 100) / 100;
     Color barColor = AppColors.teal;
     if (percent > 100) {
@@ -211,7 +214,7 @@ class OccupancyGauge extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '${volumeUsed.toStringAsFixed(1)} m³ de ${volumeCapacity.toStringAsFixed(0)} m³',
+            formatter.formatVolumeRange(volumeUsed, volumeCapacity),
             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
@@ -227,6 +230,7 @@ class VehicleRecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -264,7 +268,7 @@ class VehicleRecommendationCard extends StatelessWidget {
                   style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  '${vehicle.name} · ${vehicle.volumeM3.toStringAsFixed(0)} m³',
+                  '${vehicle.name} · ${formatter.formatVolume(vehicle.volumeM3, decimals: 0)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -288,6 +292,7 @@ class TruckListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
     final vehicle = truck.recommendedVehicle(vehicleTypes);
     final validation = truck.validateLoad(vehicleTypes);
 
@@ -343,7 +348,7 @@ class TruckListTile extends StatelessWidget {
                     _MiniStat(label: '${truck.huCount} HU', icon: Icons.inventory_2_outlined),
                     const SizedBox(width: 14),
                     _MiniStat(
-                      label: '${truck.totalVolume.toStringAsFixed(1)} m³',
+                      label: formatter.formatVolume(truck.totalVolume),
                       icon: Icons.view_in_ar_outlined,
                     ),
                     const Spacer(),

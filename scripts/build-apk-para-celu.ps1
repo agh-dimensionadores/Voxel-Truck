@@ -16,7 +16,9 @@
 #>
 param(
     [switch]$ServirEnRed,
-    [int]$Puerto = 8765
+    [int]$Puerto = 8765,
+    [string]$ApiUrl = $env:VOXEL_TRUCK_API_URL,
+    [string]$ApiToken = $env:VOXEL_TRUCK_API_TOKEN
 )
 
 $ErrorActionPreference = "Stop"
@@ -223,7 +225,22 @@ Write-Step "Instalando dependencias"
 flutter pub get
 
 Write-Step "Compilando APK release (puede tardar varios minutos la primera vez)"
-flutter build apk --release
+
+$buildArgs = @("build", "apk", "--release")
+if ($ApiUrl) {
+    $buildArgs += "--dart-define=VOXEL_TRUCK_API_URL=$ApiUrl"
+    Write-Ok "API URL configurada"
+} else {
+    Write-Warn "Sin VOXEL_TRUCK_API_URL: la app usará datos demo"
+}
+if ($ApiToken) {
+    $buildArgs += "--dart-define=VOXEL_TRUCK_API_TOKEN=$ApiToken"
+    Write-Ok "API token configurado"
+} else {
+    Write-Warn "Sin VOXEL_TRUCK_API_TOKEN: la app usará datos demo"
+}
+
+flutter @buildArgs
 
 $apkPath = Join-Path $projectRoot "build\app\outputs\flutter-apk\app-release.apk"
 if (-not (Test-Path $apkPath)) {

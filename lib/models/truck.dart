@@ -1,3 +1,5 @@
+import 'package:voxel_truck/utils/unit_formatter.dart';
+
 enum TruckStatus { abierto, pendiente, cerrado, enviado }
 
 enum LoadValidation { optimizada, subutilizada, excedida }
@@ -14,6 +16,8 @@ class HandlingUnit {
     required this.height,
     required this.weight,
     required this.source,
+    this.explicitVolumeM3,
+    this.bundleCount,
   });
 
   final String code;
@@ -22,8 +26,59 @@ class HandlingUnit {
   final double height;
   final double weight;
   final DimensionSource source;
+  final double? explicitVolumeM3;
+  final int? bundleCount;
 
-  double get volume => (length * width * height) / 1_000_000;
+  bool get isLot => bundleCount != null && bundleCount! > 1;
+
+  double get volume {
+    if (explicitVolumeM3 != null) return explicitVolumeM3!;
+    if (length > 0 && width > 0 && height > 0) {
+      return (length * width * height) / 1_000_000;
+    }
+    return 0;
+  }
+
+  factory HandlingUnit.fromVoxelCamApi(Map<String, dynamic> data, String scannedCode) {
+    final largo = _toDouble(data['largo']);
+    final ancho = _toDouble(data['ancho']);
+    final alto = _toDouble(data['alto']);
+    final peso = _toDouble(data['peso']);
+    final pesoTotal = _toDouble(data['peso_total']);
+    final volumen = _toDouble(data['volumen']);
+    final volumenTotal = _toDouble(data['volumen_total']);
+    final cantidadBultos = _toInt(data['cantidad_bultos']);
+
+    final hasDimensions = largo != null && ancho != null && alto != null;
+    final weight = peso ?? pesoTotal ?? 0;
+    final rawVolumeDm3 = volumenTotal ?? volumen;
+    final explicitVolume = hasDimensions
+        ? null
+        : (rawVolumeDm3 != null ? volumeDm3ToM3(rawVolumeDm3) : null);
+
+    return HandlingUnit(
+      code: scannedCode,
+      length: largo ?? 0,
+      width: ancho ?? 0,
+      height: alto ?? 0,
+      weight: weight,
+      source: DimensionSource.voxelCam,
+      explicitVolumeM3: explicitVolume,
+      bundleCount: cantidadBultos > 1 ? cantidadBultos : null,
+    );
+  }
+
+  static double? _toDouble(Object? value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static int _toInt(Object? value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? 0;
+  }
 }
 
 class VehicleType {

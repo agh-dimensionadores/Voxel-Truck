@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:voxel_truck/config/app_config.dart';
 import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/services/hu_lookup_service.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
@@ -59,7 +60,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       _found = false;
     });
 
-    final result = await HuLookupService.lookup(
+    final result = await HuLookupService.search(
       trimmed,
       onProgress: (message) {
         if (mounted) setState(() => _statusMessage = message);
@@ -81,7 +82,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       setState(() {
         _isSearching = false;
         _found = false;
-        _statusMessage = 'HU no encontrado: ${result.scannedCode}';
+        _statusMessage = result.errorMessage ?? 'HU no encontrado: ${result.scannedCode}';
       });
     }
   }
@@ -127,7 +128,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 8),
               Text(
-                'Códigos demo: HU-884521, HU-884522, PLT-00931, HU-771001',
+                AppConfig.isApiConfigured
+                    ? 'Los HU se consultan en Voxel Cam en tiempo real'
+                    : 'Modo demo: HU-884521, HU-884522, PLT-00931, HU-771001',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.45),

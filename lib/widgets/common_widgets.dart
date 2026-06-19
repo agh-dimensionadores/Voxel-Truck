@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:voxel_truck/models/truck.dart';
+import 'package:voxel_truck/state/display_settings_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
+import 'package:voxel_truck/utils/unit_formatter.dart';
 import 'package:voxel_truck/widgets/modern_surface.dart';
 
 class HuListTile extends StatelessWidget {
@@ -17,6 +19,7 @@ class HuListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
     final sourceLabel = switch (unit.source) {
       DimensionSource.voxelCam => 'Voxel Cam',
       DimensionSource.coresa => 'Coresa',
@@ -61,7 +64,7 @@ class HuListTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${unit.length.toInt()}×${unit.width.toInt()}×${unit.height.toInt()} cm · ${unit.weight.toStringAsFixed(1)} kg',
+                    formatter.formatDimensions(unit),
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 6),
@@ -87,7 +90,7 @@ class HuListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${unit.volume.toStringAsFixed(2)} m³',
+                  formatter.formatVolume(unit.volume, decimals: 2),
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,

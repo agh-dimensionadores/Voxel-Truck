@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -5,8 +7,11 @@ import 'package:voxel_truck/data/mock_data.dart';
 import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/services/hu_lookup_service.dart';
 import 'package:voxel_truck/state/truck_controller.dart';
+import 'package:voxel_truck/state/display_settings_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
+import 'package:voxel_truck/utils/barcode_scan_guard.dart';
 import 'package:voxel_truck/utils/platform_utils.dart';
+import 'package:voxel_truck/utils/unit_formatter.dart';
 import 'package:voxel_truck/widgets/barcode_camera_scanner.dart';
 import 'package:voxel_truck/widgets/common_widgets.dart';
 import 'package:voxel_truck/widgets/modern_surface.dart';
@@ -24,7 +29,13 @@ class TruckDetailScreen extends StatefulWidget {
 class _TruckDetailScreenState extends State<TruckDetailScreen> {
   final _scanController = TextEditingController();
   final _scanFocusNode = FocusNode();
+  final _scrollController = ScrollController();
+  final _scanGuard = BarcodeScanGuard();
+  Timer? _scanDebounce;
   bool _isLookingUp = false;
+  bool _showCameraFab = true;
+
+  static const _closeActionsVisibilityThreshold = 160.0;
 
   TruckController get _controller => TruckScope.of(context);
 
@@ -33,14 +44,35 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _requestScanFocus());
+    _scrollController.addListener(_updateCameraFabVisibility);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestScanFocus();
+      _updateCameraFabVisibility();
+    });
   }
 
   @override
   void dispose() {
+    _scanDebounce?.cancel();
+    _scrollController.removeListener(_updateCameraFabVisibility);
+    _scrollController.dispose();
     _scanController.dispose();
     _scanFocusNode.dispose();
     super.dispose();
+  }
+
+  void _updateCameraFabVisibility() {
+    if (!mounted || !_scrollController.hasClients) return;
+
+    final truck = _truck;
+    if (truck == null || !truck.isEditable) return;
+
+    final position = _scrollController.position;
+    final distanceToBottom = position.maxScrollExtent - position.pixels;
+    final nearCloseActions = distanceToBottom <= _closeActionsVisibilityThreshold;
+    if (_showCameraFab == nearCloseActions) {
+      setState(() => _showCameraFab = !nearCloseActions);
+    }
   }
 
   void _requestScanFocus() {
@@ -66,11 +98,12 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     setState(() {});
     _showScanFeedback('${unit.code} agregado');
     _requestScanFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
   }
 
   Future<bool> _tryAddFromBarcode(String code) async {
-    final normalized = HuLookupService.normalizeCode(code);
-    if (normalized.isEmpty || _isLookingUp) return false;
+    final normalized = _scanGuard.prepare(code);
+    if (normalized == null || _isLookingUp) return false;
 
     final truck = _truck;
     if (truck == null || !truck.isEditable) return false;
@@ -82,25 +115,46 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
 
     setState(() => _isLookingUp = true);
 
-    final result = await HuLookupService.lookup(normalized);
+    try {
+      final result = await HuLookupService.search(normalized);
 
-    if (!mounted) return false;
+      if (!mounted) return false;
 
-    setState(() => _isLookingUp = false);
+      if (result.found && result.unit != null) {
+        await _addHandlingUnit(result.unit!);
+        return true;
+      }
 
-    if (result.found && result.unit != null) {
-      await _addHandlingUnit(result.unit!);
-      return true;
+      _showScanFeedback(result.errorMessage ?? 'HU no encontrado: ${result.scannedCode}', isError: true);
+      return false;
+    } finally {
+      if (mounted) setState(() => _isLookingUp = false);
     }
-
-    _showScanFeedback('HU no encontrado: ${result.scannedCode}', isError: true);
-    return false;
   }
 
-  Future<void> _onBarcodeSubmitted(String code) async {
+  Future<void> _finalizeScan() async {
+    _scanDebounce?.cancel();
+    final code = _scanController.text;
     _scanController.clear();
     await _tryAddFromBarcode(code);
     _requestScanFocus();
+  }
+
+  void _onScanFieldChanged(String value) {
+    _scanDebounce?.cancel();
+    if (value.contains('\n') || value.contains('\r')) {
+      unawaited(_finalizeScan());
+      return;
+    }
+    _scanDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (_scanController.text.trim().isNotEmpty) {
+        unawaited(_finalizeScan());
+      }
+    });
+  }
+
+  Future<void> _onBarcodeSubmitted(String _) async {
+    await _finalizeScan();
   }
 
   Future<void> _openCameraScan() async {
@@ -291,6 +345,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     final validation = truck.validateLoad(vehicleTypes);
     final occupancy = truck.occupancyPercent(vehicle);
     final dateFormat = DateFormat('dd/MM/yyyy');
+    final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -326,7 +381,8 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
       body: Stack(
         children: [
           ListView(
-        padding: const EdgeInsets.fromLTRB(20, 100, 20, 32),
+        controller: _scrollController,
+        padding: EdgeInsets.fromLTRB(20, 100, 20, isEditable && _showCameraFab ? 96 : 32),
         children: [
           _TripHeader(
             tripNumber: truck.tripNumber,
@@ -377,7 +433,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
               StatChip(
                 icon: Icons.view_in_ar_outlined,
                 label: 'Volumen',
-                value: '${truck.totalVolume.toStringAsFixed(1)} m³',
+                value: formatter.formatVolume(truck.totalVolume),
                 accent: AppColors.tealDark,
               ),
             ],
@@ -447,6 +503,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                 onDelete: () {
                   _controller.removeHandlingUnit(widget.truckId, unit.code);
                   setState(() {});
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
                 },
               ),
             ),
@@ -465,14 +522,16 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                   focusNode: _scanFocusNode,
                   enableSuggestions: false,
                   autocorrect: false,
+                  enableInteractiveSelection: false,
                   textCapitalization: TextCapitalization.characters,
+                  onChanged: _onScanFieldChanged,
                   onSubmitted: _onBarcodeSubmitted,
                 ),
               ),
             ),
         ],
       ),
-      floatingActionButton: isEditable
+      floatingActionButton: isEditable && _showCameraFab
           ? FloatingActionButton.extended(
               onPressed: supportsBarcodeCamera ? _openCameraScan : _scanHu,
               elevation: 6,

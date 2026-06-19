@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:voxel_truck/screens/create_truck_screen.dart';
 import 'package:voxel_truck/screens/home_screen.dart';
 import 'package:voxel_truck/screens/scan_screen.dart';
+import 'package:voxel_truck/screens/settings_screen.dart';
 import 'package:voxel_truck/screens/truck_detail_screen.dart';
+import 'package:voxel_truck/state/display_settings_controller.dart';
 import 'package:voxel_truck/state/truck_controller.dart';
 import 'package:voxel_truck/theme/app_theme.dart';
 import 'package:voxel_truck/widgets/common_widgets.dart';
@@ -17,18 +19,24 @@ class VoxelTruckApp extends StatefulWidget {
 
 class _VoxelTruckAppState extends State<VoxelTruckApp> {
   late final TruckController _controller;
+  late final DisplaySettingsController _displaySettings;
   late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
     _controller = TruckController();
+    _displaySettings = DisplaySettingsController()..load();
     _router = GoRouter(
       initialLocation: '/',
       routes: [
         GoRoute(
           path: '/',
           builder: (context, state) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
         ),
         GoRoute(
           path: '/create',
@@ -52,21 +60,25 @@ class _VoxelTruckAppState extends State<VoxelTruckApp> {
   void dispose() {
     _router.dispose();
     _controller.dispose();
+    _displaySettings.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return TruckScope(
-      notifier: _controller,
-      child: MaterialApp.router(
-        title: 'Voxel Truck',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        routerConfig: _router,
-        builder: (context, child) {
-          return MobileShell(child: child ?? const SizedBox.shrink());
-        },
+    return DisplaySettingsScope(
+      notifier: _displaySettings,
+      child: TruckScope(
+        notifier: _controller,
+        child: MaterialApp.router(
+          title: 'Voxel Truck',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          routerConfig: _router,
+          builder: (context, child) {
+            return MobileShell(child: child ?? const SizedBox.shrink());
+          },
+        ),
       ),
     );
   }

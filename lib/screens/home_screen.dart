@@ -37,7 +37,27 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const VoxelLogo(height: 48),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: VoxelLogo(height: 48),
+                            ),
+                            IconButton(
+                              onPressed: () => context.push('/settings'),
+                              tooltip: 'Configuración',
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+                                ),
+                                child: const Icon(Icons.settings_outlined, size: 22, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         Text(
                           'Camiones',
