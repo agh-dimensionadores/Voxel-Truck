@@ -34,8 +34,7 @@ abstract final class AppTheme {
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -75,10 +74,12 @@ abstract final class AppTheme {
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.teal,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 6,
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       dividerTheme: const DividerThemeData(color: AppColors.border, thickness: 1),
     );

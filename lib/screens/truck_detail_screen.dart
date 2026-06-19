@@ -6,6 +6,7 @@ import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/state/truck_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
 import 'package:voxel_truck/widgets/common_widgets.dart';
+import 'package:voxel_truck/widgets/modern_surface.dart';
 import 'package:voxel_truck/widgets/truck_widgets.dart';
 
 class TruckDetailScreen extends StatefulWidget {
@@ -32,6 +33,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           content: Text('${unit.code} agregado'),
           backgroundColor: AppColors.tealDark,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -52,16 +54,14 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
       showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Cerrar camión'),
           content: Text(
             'La carga está optimizada (${occupancy.toStringAsFixed(0)}% de ocupación). '
             'Se guardará el porcentaje para trazabilidad.',
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             FilledButton(
               onPressed: () {
                 _controller.closeTruck(widget.truckId, occupancyPercent: occupancy);
@@ -69,9 +69,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                 setState(() {});
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      'Camión cerrado · ${occupancy.toStringAsFixed(0)}% guardado',
-                    ),
+                    content: Text('Camión cerrado · ${occupancy.toStringAsFixed(0)}% guardado'),
                     backgroundColor: AppColors.purple,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -89,19 +87,17 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Camión no optimizado'),
         content: Text(
           isExcess
-              ? 'La carga excede la capacidad del vehículo (${occupancy.toStringAsFixed(0)}%). '
+              ? 'La carga excede la capacidad (${occupancy.toStringAsFixed(0)}%). '
                   'Se enviará una alerta por email a los representantes.'
-              : 'La ocupación es inferior al 80% de la capacidad (${occupancy.toStringAsFixed(0)}%). '
+              : 'Ocupación inferior al 80% (${occupancy.toStringAsFixed(0)}%). '
                   'Se enviará una alerta por email a los representantes.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
             onPressed: () {
               _controller.closeTruck(widget.truckId, occupancyPercent: occupancy);
@@ -109,7 +105,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
               setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Alerta enviada por email · Camión en PENDIENTE'),
+                  content: Text('Alerta enviada · Camión en PENDIENTE'),
                   backgroundColor: AppColors.warning,
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -127,15 +123,13 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Reanudar camión'),
         content: Text(
-          '¿Desea reabrir el viaje ${truck.tripNumber} para escanear o eliminar bultos?',
+          '¿Reabrir el viaje ${truck.tripNumber} para escanear o eliminar bultos?',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
             onPressed: () {
               _controller.reopenTruck(widget.truckId);
@@ -153,16 +147,14 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Marcar como enviado'),
         content: Text(
           '¿Confirmar envío del viaje ${truck.tripNumber}? '
-          'Ocupación registrada: ${truck.savedOccupancyPercent?.toStringAsFixed(0)}%.',
+          'Ocupación: ${truck.savedOccupancyPercent?.toStringAsFixed(0)}%.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
             onPressed: () {
               _controller.markAsSent(widget.truckId);
@@ -200,54 +192,45 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     final dateFormat = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
+      backgroundColor: AppColors.background,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(truck.tripNumber),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.arrow_back_rounded, size: 20),
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
-          StatusBadge(status: truck.status),
-          const SizedBox(width: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: StatusBadge(status: truck.status),
+          ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+        padding: const EdgeInsets.fromLTRB(20, 100, 20, 32),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _InfoRow(
-                    icon: Icons.warehouse_outlined,
-                    label: 'Centro',
-                    value: truck.logisticsCenter,
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.place_outlined,
-                    label: 'Destino',
-                    value: truck.destination,
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Fecha',
-                    value: dateFormat.format(truck.date),
-                  ),
-                  if (truck.observations != null) ...[
-                    const SizedBox(height: 8),
-                    _InfoRow(
-                      icon: Icons.notes_outlined,
-                      label: 'Obs.',
-                      value: truck.observations!,
-                    ),
-                  ],
-                ],
-              ),
-            ),
+          _TripHeader(
+            tripNumber: truck.tripNumber,
+            destination: truck.destination,
+            logisticsCenter: truck.logisticsCenter,
+            date: dateFormat.format(truck.date),
+            observations: truck.observations,
           ),
           if (truck.status == TruckStatus.pendiente && truck.alertEmailSent) ...[
             const SizedBox(height: 16),
@@ -280,14 +263,14 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                 value: '${truck.huCount}',
                 accent: AppColors.purple,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               StatChip(
                 icon: Icons.scale_outlined,
                 label: 'Peso',
                 value: '${truck.totalWeight.toStringAsFixed(0)} kg',
                 accent: AppColors.teal,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               StatChip(
                 icon: Icons.view_in_ar_outlined,
                 label: 'Volumen',
@@ -296,46 +279,48 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Bultos (${truck.huCount})',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-              if (isEditable)
-                TextButton.icon(
-                  onPressed: _scanHu,
-                  icon: const Icon(Icons.qr_code_scanner, size: 18),
-                  label: const Text('Escanear'),
-                ),
-            ],
+          const SizedBox(height: 28),
+          SectionLabel(
+            title: 'Bultos',
+            count: truck.huCount,
+            trailing: isEditable
+                ? TextButton.icon(
+                    onPressed: _scanHu,
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    label: const Text('Escanear'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.teal,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  )
+                : null,
           ),
-          const SizedBox(height: 8),
           if (truck.handlingUnits.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(
+            ModernSurface(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.purpleLight,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
                       Icons.qr_code_scanner_rounded,
-                      size: 48,
-                      color: AppColors.purple.withValues(alpha: 0.4),
+                      size: 28,
+                      color: AppColors.purple.withValues(alpha: 0.6),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Sin bultos escaneados',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Escanee HU, pallets o bultos',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('Sin bultos escaneados', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Use el botón de escaneo para agregar HU',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
               ),
             )
           else
@@ -349,109 +334,197 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                 },
               ),
             ),
+          const SizedBox(height: 32),
+          _buildScrollActions(truck, occupancy, validation),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(truck, occupancy, validation),
       floatingActionButton: isEditable
-          ? FloatingActionButton(
+          ? FloatingActionButton.extended(
               onPressed: _scanHu,
-              child: const Icon(Icons.add),
+              elevation: 6,
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: const Text('Escanear'),
             )
           : null,
     );
   }
 
-  Widget? _buildBottomBar(Truck truck, double occupancy, LoadValidation validation) {
+  Widget _buildScrollActions(Truck truck, double occupancy, LoadValidation validation) {
     switch (truck.status) {
       case TruckStatus.abierto:
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton.icon(
-                  onPressed: _scanHu,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Escanear HU'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.teal),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: () => _confirmCloseTruck(truck, occupancy, validation),
-                  child: const Text('CERRAR CAMIÓN'),
-                ),
-              ],
+        return Column(
+          children: [
+            const Divider(height: 1),
+            const SizedBox(height: 24),
+            Text(
+              'Revisá todos los bultos antes de cerrar',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary.withValues(alpha: 0.9),
+              ),
             ),
-          ),
+            const SizedBox(height: 14),
+            FilledButton(
+              onPressed: () => _confirmCloseTruck(truck, occupancy, validation),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 54),
+                backgroundColor: AppColors.purple,
+              ),
+              child: const Text('CERRAR CAMIÓN'),
+            ),
+            const SizedBox(height: 16),
+          ],
         );
       case TruckStatus.pendiente:
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: OutlinedButton(
+        return OutlinedButton(
+          onPressed: () => _confirmReopen(truck),
+          child: const Text('REANUDAR CAMIÓN'),
+        );
+      case TruckStatus.cerrado:
+        return Column(
+          children: [
+            FilledButton(
+              onPressed: () => _confirmSend(truck),
+              child: const Text('MARCAR COMO ENVIADO'),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
               onPressed: () => _confirmReopen(truck),
               child: const Text('REANUDAR CAMIÓN'),
             ),
-          ),
-        );
-      case TruckStatus.cerrado:
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton(
-                  onPressed: () => _confirmSend(truck),
-                  child: const Text('MARCAR COMO ENVIADO'),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: () => _confirmReopen(truck),
-                  child: const Text('REANUDAR CAMIÓN'),
-                ),
-              ],
-            ),
-          ),
+          ],
         );
       case TruckStatus.enviado:
-        return null;
+        return const SizedBox.shrink();
     }
+  }
+}
+
+class _TripHeader extends StatelessWidget {
+  const _TripHeader({
+    required this.tripNumber,
+    required this.destination,
+    required this.logisticsCenter,
+    required this.date,
+    this.observations,
+  });
+
+  final String tripNumber;
+  final String destination;
+  final String logisticsCenter;
+  final String date;
+  final String? observations;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.purple,
+            AppColors.purpleDark,
+            AppColors.teal.withValues(alpha: 0.85),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.purple.withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tripNumber,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            destination,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HeaderChip(icon: Icons.warehouse_outlined, label: logisticsCenter),
+              _HeaderChip(icon: Icons.calendar_today_outlined, label: date),
+              if (observations != null)
+                _HeaderChip(icon: Icons.notes_outlined, label: observations!),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderChip extends StatelessWidget {
+  const _HeaderChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.95),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _EmailAlertBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-      ),
+    return ModernSurface(
+      padding: const EdgeInsets.all(14),
+      color: const Color(0xFFFEF3C7).withValues(alpha: 0.6),
+      border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
       child: const Row(
         children: [
-          Icon(Icons.mail_outline, color: AppColors.warning),
-          SizedBox(width: 12),
+          Icon(Icons.mail_outline_rounded, color: AppColors.warning, size: 20),
+          SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Alerta enviada',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFB45309),
-                  ),
-                ),
-                Text(
-                  'Se notificó por email a los representantes. Reanude el camión para ajustar la carga.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
+            child: Text(
+              'Alerta enviada por email. Reanudá el camión para ajustar la carga.',
+              style: TextStyle(fontSize: 13, color: Color(0xFFB45309), fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -467,74 +540,26 @@ class _TraceabilityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.purpleLight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.purple.withValues(alpha: 0.3)),
-      ),
+    return ModernSurface(
+      padding: const EdgeInsets.all(14),
+      color: AppColors.purpleLight.withValues(alpha: 0.5),
+      border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
       child: Row(
         children: [
-          const Icon(Icons.history_rounded, color: AppColors.purple),
-          const SizedBox(width: 12),
+          const Icon(Icons.history_rounded, color: AppColors.purple, size: 20),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Trazabilidad',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.purpleDark,
-                  ),
-                ),
-                Text(
-                  'Ocupación registrada al cierre: ${percent.toStringAsFixed(1)}%',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
+            child: Text(
+              'Trazabilidad · ${percent.toStringAsFixed(1)}% al cierre',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.purpleDark,
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 56,
-          child: Text(
-            label,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          ),
-        ),
-      ],
     );
   }
 }

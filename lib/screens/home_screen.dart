@@ -4,6 +4,7 @@ import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/screens/truck_detail_screen.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
 import 'package:voxel_truck/widgets/common_widgets.dart';
+import 'package:voxel_truck/widgets/modern_surface.dart';
 import 'package:voxel_truck/widgets/truck_widgets.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -26,48 +27,38 @@ class HomeScreen extends StatelessWidget {
             controller.trucks.where((t) => t.status == TruckStatus.enviado).toList();
 
         return Scaffold(
+          backgroundColor: AppColors.background,
           body: SafeArea(
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const VoxelLogo(height: 48),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         Text(
                           'Camiones',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
                               ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Consolidación y despacho',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        Text(
+                          '${controller.trucks.length} viajes · consolidación y despacho',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                         ),
                       ],
                     ),
                   ),
                 ),
-                ..._buildSection(
-                  context,
-                  title: 'Abiertos',
-                  trucks: openTrucks,
-                ),
-                ..._buildSection(
-                  context,
-                  title: 'Pendientes',
-                  trucks: pendingTrucks,
-                ),
-                ..._buildSection(
-                  context,
-                  title: 'Listos para envío',
-                  trucks: closedTrucks,
-                ),
+                ..._buildSection(context, title: 'Abiertos', trucks: openTrucks),
+                ..._buildSection(context, title: 'Pendientes', trucks: pendingTrucks),
+                ..._buildSection(context, title: 'Listos para envío', trucks: closedTrucks),
                 ..._buildSection(
                   context,
                   title: 'Enviados',
@@ -99,7 +90,8 @@ class HomeScreen extends StatelessWidget {
                 context.push('/truck/${truck.id}');
               }
             },
-            icon: const Icon(Icons.add),
+            elevation: 6,
+            icon: const Icon(Icons.add_rounded),
             label: const Text('Nuevo camión'),
           ),
         );
@@ -118,11 +110,8 @@ class HomeScreen extends StatelessWidget {
     return [
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+          child: SectionLabel(title: title, count: trucks.length),
         ),
       ),
       SliverPadding(

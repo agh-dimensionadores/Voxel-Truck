@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:voxel_truck/data/mock_data.dart';
 import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
+import 'package:voxel_truck/widgets/modern_surface.dart';
 
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
@@ -18,7 +19,7 @@ class StatusBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
@@ -27,9 +28,9 @@ class StatusBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
         ),
       ),
     );
@@ -44,34 +45,22 @@ class LoadAlertBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (validation == LoadValidation.optimizada) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.tealLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.teal.withValues(alpha: 0.4)),
-        ),
+      return ModernSurface(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        color: AppColors.tealLight.withValues(alpha: 0.5),
+        border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.tealDark),
-            SizedBox(width: 12),
+            Icon(Icons.check_circle_rounded, color: AppColors.tealDark, size: 20),
+            SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Carga optimizada',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.tealDark,
-                    ),
-                  ),
-                  Text(
-                    'Listo para cerrar camión',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                ],
+              child: Text(
+                'Carga optimizada · listo para cerrar',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppColors.tealDark,
+                ),
               ),
             ),
           ],
@@ -80,50 +69,25 @@ class LoadAlertBanner extends StatelessWidget {
     }
 
     final isExcess = validation == LoadValidation.excedida;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isExcess ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isExcess ? AppColors.error.withValues(alpha: 0.4) : AppColors.warning.withValues(alpha: 0.4),
-        ),
-      ),
+    final color = isExcess ? AppColors.error : AppColors.warning;
+    return ModernSurface(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      color: (isExcess ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)).withValues(alpha: 0.7),
+      border: Border.all(color: color.withValues(alpha: 0.25)),
       child: Row(
         children: [
-          Icon(
-            Icons.warning_rounded,
-            color: isExcess ? AppColors.error : AppColors.warning,
-          ),
-          const SizedBox(width: 12),
+          Icon(Icons.warning_amber_rounded, color: color, size: 20),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ALERTA',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: 1,
-                    color: isExcess ? AppColors.error : AppColors.warning,
-                  ),
-                ),
-                Text(
-                  isExcess ? 'Carga excedida' : 'Camión subutilizado',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: isExcess ? AppColors.error : const Color(0xFFB45309),
-                  ),
-                ),
-                Text(
-                  isExcess
-                      ? 'Cierre bloqueado. Se notificará por email a representantes.'
-                      : 'Ocupación menor al 80%. Se notificará por email al cerrar.',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
+            child: Text(
+              isExcess
+                  ? 'Carga excedida · alerta por email al cerrar'
+                  : 'Subutilizado (<80%) · alerta por email al cerrar',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: isExcess ? AppColors.error : const Color(0xFFB45309),
+              ),
             ),
           ),
         ],
@@ -149,29 +113,33 @@ class StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
+      child: ModernSurface(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        radius: 16,
         child: Column(
           children: [
-            Icon(icon, size: 20, color: accent),
-            const SizedBox(height: 6),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 17, color: accent),
+            ),
+            const SizedBox(height: 8),
             Text(
               value,
               style: const TextStyle(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
                 fontSize: 15,
                 color: AppColors.textPrimary,
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               label,
               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -202,46 +170,51 @@ class OccupancyGauge extends StatelessWidget {
       barColor = AppColors.warning;
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
+    return ModernSurface(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Expanded(
+                child: Text(
                   'Ocupación',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                Text(
-                  '${percent.toStringAsFixed(0)}%',
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    color: barColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: clamped,
-                minHeight: 10,
-                backgroundColor: AppColors.border,
-                color: barColor,
               ),
+              Text(
+                '${percent.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                  height: 1,
+                  color: barColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: clamped,
+              minHeight: 8,
+              backgroundColor: AppColors.border.withValues(alpha: 0.5),
+              color: barColor,
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${volumeUsed.toStringAsFixed(1)} m³ de ${volumeCapacity.toStringAsFixed(0)} m³',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${volumeUsed.toStringAsFixed(1)} m³ de ${volumeCapacity.toStringAsFixed(0)} m³',
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ],
       ),
     );
   }
@@ -255,51 +228,47 @@ class VehicleRecommendationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.purple, AppColors.purpleDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        gradient: LinearGradient(
+          colors: [
+            AppColors.purple.withValues(alpha: 0.08),
+            AppColors.teal.withValues(alpha: 0.06),
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.purple.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [AppColors.purple, AppColors.teal],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 28),
+            child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Vehículo recomendado',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  vehicle.name,
+                  '${vehicle.name} · ${vehicle.volumeM3.toStringAsFixed(0)} m³',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  '${vehicle.volumeM3.toStringAsFixed(0)} m³ de capacidad',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -322,84 +291,93 @@ class TruckListTile extends StatelessWidget {
     final vehicle = truck.recommendedVehicle(vehicleTypes);
     final validation = truck.validateLoad(vehicleTypes);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      truck.tripNumber,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  StatusBadge(status: truck.status),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      '${truck.logisticsCenter} → ${truck.destination}',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _MiniStat(label: '${truck.huCount} HU', icon: Icons.inventory_2_outlined),
-                  const SizedBox(width: 16),
-                  _MiniStat(
-                    label: '${truck.totalVolume.toStringAsFixed(1)} m³',
-                    icon: Icons.view_in_ar_outlined,
-                  ),
-                  const Spacer(),
-                  if (truck.status == TruckStatus.pendiente)
-                    const Icon(
-                      Icons.mail_outline,
-                      size: 20,
-                      color: AppColors.warning,
-                    ),
-                  if (truck.status == TruckStatus.abierto && validation != LoadValidation.optimizada)
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 20,
-                      color: validation == LoadValidation.excedida ? AppColors.error : AppColors.warning,
-                    ),
-                  if (vehicle != null && (truck.status == TruckStatus.abierto || truck.status == TruckStatus.cerrado))
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.tealLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: ModernSurface(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        vehicle.name,
+                        truck.tripNumber,
                         style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.tealDark,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
-                ],
-              ),
-            ],
+                    StatusBadge(status: truck.status),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: AppColors.purple.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${truck.logisticsCenter}  →  ${truck.destination}',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _MiniStat(label: '${truck.huCount} HU', icon: Icons.inventory_2_outlined),
+                    const SizedBox(width: 14),
+                    _MiniStat(
+                      label: '${truck.totalVolume.toStringAsFixed(1)} m³',
+                      icon: Icons.view_in_ar_outlined,
+                    ),
+                    const Spacer(),
+                    if (truck.status == TruckStatus.pendiente)
+                      Icon(Icons.mail_outline, size: 18, color: AppColors.warning.withValues(alpha: 0.9)),
+                    if (truck.status == TruckStatus.abierto && validation != LoadValidation.optimizada)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: validation == LoadValidation.excedida ? AppColors.error : AppColors.warning,
+                        ),
+                      ),
+                    if (vehicle != null && (truck.status == TruckStatus.abierto || truck.status == TruckStatus.cerrado))
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.tealLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          vehicle.name,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.tealDark,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -418,7 +396,7 @@ class _MiniStat extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.purple),
+        Icon(icon, size: 13, color: AppColors.purple),
         const SizedBox(width: 4),
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
       ],

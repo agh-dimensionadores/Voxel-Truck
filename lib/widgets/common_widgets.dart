@@ -1,41 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:voxel_truck/models/truck.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
-
-class MobileShell extends StatelessWidget {
-  const MobileShell({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth <= 480) {
-          return child;
-        }
-
-        return Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 430),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRect(child: child),
-          ),
-        );
-      },
-    );
-  }
-}
+import 'package:voxel_truck/widgets/modern_surface.dart';
 
 class HuListTile extends StatelessWidget {
   const HuListTile({
@@ -63,20 +29,26 @@ class HuListTile extends StatelessWidget {
       DimensionSource.manual => AppColors.textSecondary,
     };
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: ModernSurface(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        radius: 16,
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: AppColors.purpleLight,
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.purpleLight,
+                    AppColors.tealLight.withValues(alpha: 0.5),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.qr_code_2_rounded, color: AppColors.purple),
+              child: const Icon(Icons.qr_code_2_rounded, color: AppColors.purple, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -85,25 +57,25 @@ class HuListTile extends StatelessWidget {
                 children: [
                   Text(
                     unit.code,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     '${unit.length.toInt()}×${unit.width.toInt()}×${unit.height.toInt()} cm · ${unit.weight.toStringAsFixed(1)} kg',
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: sourceColor.withValues(alpha: 0.12),
+                      color: sourceColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       sourceLabel,
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: sourceColor,
                       ),
                     ),
@@ -116,14 +88,22 @@ class HuListTile extends StatelessWidget {
               children: [
                 Text(
                   '${unit.volume.toStringAsFixed(2)} m³',
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.tealDark),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.tealDark,
+                  ),
                 ),
                 if (canDelete)
                   IconButton(
                     onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: AppColors.error,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: AppColors.textSecondary,
                     visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.border.withValues(alpha: 0.4),
+                      minimumSize: const Size(32, 32),
+                    ),
                   ),
               ],
             ),
@@ -161,6 +141,42 @@ class VoxelLogo extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class MobileShell extends StatelessWidget {
+  const MobileShell({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth <= 480) {
+          return child;
+        }
+
+        return Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 430),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.purple.withValues(alpha: 0.12),
+                  blurRadius: 40,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
