@@ -18,7 +18,8 @@ param(
     [switch]$ServirEnRed,
     [int]$Puerto = 8765,
     [string]$ApiUrl = $env:VOXEL_TRUCK_API_URL,
-    [string]$ApiToken = $env:VOXEL_TRUCK_API_TOKEN
+    [string]$ApiToken = $env:VOXEL_TRUCK_API_TOKEN,
+    [string]$ClientId = $env:VOXEL_TRUCK_CLIENT_ID
 )
 
 $ErrorActionPreference = "Stop"
@@ -238,6 +239,12 @@ if ($ApiToken) {
     Write-Ok "API token configurado"
 } else {
     Write-Warn "Sin VOXEL_TRUCK_API_TOKEN: la app usará datos demo"
+}
+if ($ClientId) {
+    $buildArgs += "--dart-define=VOXEL_TRUCK_CLIENT_ID=$ClientId"
+    Write-Ok "Client ID configurado ($ClientId)"
+} else {
+    Write-Warn "Sin VOXEL_TRUCK_CLIENT_ID: la app usará datos demo"
 }
 
 flutter @buildArgs

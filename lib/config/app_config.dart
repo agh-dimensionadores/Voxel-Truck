@@ -6,12 +6,20 @@ class AppConfig {
     defaultValue: '',
   );
 
-  /// Token de cliente (mismo que usan las máquinas scanner).
+  /// Token de cliente (mismo que client_token en license_config.json).
   static const apiToken = String.fromEnvironment(
     'VOXEL_TRUCK_API_TOKEN',
     defaultValue: '',
   );
 
+  /// ID del cliente asociado al token (mismo que client_id en license_config.json).
+  static const clientId = String.fromEnvironment(
+    'VOXEL_TRUCK_CLIENT_ID',
+    defaultValue: '',
+  );
+
   static bool get isApiConfigured =>
-      apiBaseUrl.trim().isNotEmpty && apiToken.trim().isNotEmpty;
+      apiBaseUrl.trim().isNotEmpty &&
+      apiToken.trim().isNotEmpty &&
+      clientId.trim().isNotEmpty;
 }
