@@ -125,7 +125,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
         return true;
       }
 
-      _showScanFeedback(result.errorMessage ?? 'HU no encontrado: ${result.scannedCode}', isError: true);
+      _showScanFeedback(result.errorMessage ?? HuLookupService.notFoundMessage(result.scannedCode), isError: true);
       return false;
     } finally {
       if (mounted) setState(() => _isLookingUp = false);

@@ -40,33 +40,45 @@ class HandlingUnit {
   }
 
   factory HandlingUnit.fromVoxelCamApi(Map<String, dynamic> data, String scannedCode) {
-    final largo = _toDouble(data['largo']);
-    final ancho = _toDouble(data['ancho']);
-    final alto = _toDouble(data['alto']);
+    final largo = _dimensionCm(data, 'largo');
+    final ancho = _dimensionCm(data, 'ancho');
+    final alto = _dimensionCm(data, 'alto');
     final peso = _toDouble(data['peso']);
     final pesoTotal = _toDouble(data['peso_total']);
     final volumen = _toDouble(data['volumen']);
     final volumenTotal = _toDouble(data['volumen_total']);
     final cantidadBultos = _toInt(data['cantidad_bultos']);
 
-    final hasDimensions = largo != null && ancho != null && alto != null;
     final weight = peso ?? pesoTotal ?? 0;
     final rawVolumeDm3 = volumenTotal ?? volumen;
-    final explicitVolume = hasDimensions
-        ? null
-        : (rawVolumeDm3 != null ? volumeDm3ToM3(rawVolumeDm3) : null);
+    final explicitVolume =
+        rawVolumeDm3 != null ? volumeDm3ToM3(rawVolumeDm3) : null;
 
     return HandlingUnit(
       code: scannedCode,
-      length: largo ?? 0,
-      width: ancho ?? 0,
-      height: alto ?? 0,
+      length: largo,
+      width: ancho,
+      height: alto,
       weight: weight,
       source: DimensionSource.voxelCam,
       explicitVolumeM3: explicitVolume,
       bundleCount: cantidadBultos > 1 ? cantidadBultos : null,
     );
   }
+
+  static double _dimensionCm(Map<String, dynamic> data, String base) {
+    final direct = _toDouble(data['${base}_cm']) ??
+        _toDouble(data[base]) ??
+        _toDouble(data[_englishDimensionKey(base)]);
+    return direct ?? 0;
+  }
+
+  static String _englishDimensionKey(String base) => switch (base) {
+        'largo' => 'length',
+        'ancho' => 'width',
+        'alto' => 'height',
+        _ => base,
+      };
 
   static double? _toDouble(Object? value) {
     if (value == null) return null;

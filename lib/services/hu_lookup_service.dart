@@ -60,6 +60,8 @@ class HuLookupService {
   }) =>
       _instance.lookup(code, onProgress: onProgress);
 
+  static String notFoundMessage(String code) => 'No se encontró el escaneo: $code';
+
   Future<HuLookupResult> _lookupFromApi(
     String normalized,
     void Function(String message)? onProgress,
@@ -73,9 +75,15 @@ class HuLookupService {
       }
       return HuLookupResult(
         scannedCode: normalized,
-        errorMessage: 'No se encontró HU \'$normalized\' en Voxel Cam',
+        errorMessage: notFoundMessage(normalized),
       );
     } on VoxelTruckApiException catch (error) {
+      if (_isNotFoundError(error)) {
+        return HuLookupResult(
+          scannedCode: normalized,
+          errorMessage: notFoundMessage(normalized),
+        );
+      }
       return HuLookupResult(
         scannedCode: normalized,
         errorMessage: error.message,
@@ -103,8 +111,14 @@ class HuLookupService {
 
     return HuLookupResult(
       scannedCode: lookupKey,
-      errorMessage:
-          'No se encontró \'$lookupKey\' (modo demo: HU-884521, HU-884522, PLT-00931, HU-771001)',
+      errorMessage: notFoundMessage(lookupKey),
     );
+  }
+
+  bool _isNotFoundError(VoxelTruckApiException error) {
+    final message = error.message.toLowerCase();
+    return message.contains('no se encontr') ||
+        message.contains('not found') ||
+        error.statusCode == 404;
   }
 }

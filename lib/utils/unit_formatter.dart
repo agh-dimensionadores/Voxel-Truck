@@ -1,7 +1,7 @@
 import 'package:voxel_truck/models/display_units.dart';
 import 'package:voxel_truck/models/truck.dart';
 
-/// Formatea valores almacenados en m³ y cm según preferencias de visualización.
+/// Valores internos: dimensiones en cm (como vienen del API), volumen en m³.
 class UnitFormatter {
   const UnitFormatter(this.settings);
 
@@ -9,10 +9,6 @@ class UnitFormatter {
 
   double volumeFromM3(double volumeM3) {
     return settings.volumeUnit == VolumeDisplayUnit.dm3 ? volumeM3 * 1000 : volumeM3;
-  }
-
-  double dimensionFromCm(double valueCm) {
-    return settings.dimensionUnit == DimensionDisplayUnit.mm ? valueCm * 10 : valueCm;
   }
 
   String formatVolume(double volumeM3, {int decimals = 1}) {
@@ -38,6 +34,7 @@ class UnitFormatter {
     return '${unit.weight.toStringAsFixed(1)} kg';
   }
 
+  /// [lengthCm], [widthCm], [heightCm] ya están en centímetros (sin convertir).
   String formatDimensionLine(double lengthCm, double widthCm, double heightCm) {
     final l = _formatDimensionValue(lengthCm);
     final w = _formatDimensionValue(widthCm);
@@ -46,10 +43,12 @@ class UnitFormatter {
   }
 
   String _formatDimensionValue(double valueCm) {
-    final value = dimensionFromCm(valueCm);
-    return settings.dimensionUnit == DimensionDisplayUnit.mm
-        ? value.toStringAsFixed(0)
-        : value.toStringAsFixed(value == value.roundToDouble() ? 0 : 1);
+    if (settings.dimensionUnit == DimensionDisplayUnit.mm) {
+      return (valueCm * 10).toStringAsFixed(0);
+    }
+    return valueCm == valueCm.roundToDouble()
+        ? valueCm.toStringAsFixed(0)
+        : valueCm.toStringAsFixed(1);
   }
 }
 

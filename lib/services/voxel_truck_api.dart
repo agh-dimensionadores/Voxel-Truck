@@ -125,8 +125,8 @@ class VoxelTruckApi {
     }
 
     final serverError = body['error'] ?? body['detail'];
-    if (serverError != null) {
-      throw VoxelTruckApiException(serverError.toString());
+    if (serverError != null && body['success'] != true) {
+      return null;
     }
 
     return null;

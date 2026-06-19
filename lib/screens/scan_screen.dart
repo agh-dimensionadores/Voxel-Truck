@@ -82,7 +82,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
       setState(() {
         _isSearching = false;
         _found = false;
-        _statusMessage = result.errorMessage ?? 'HU no encontrado: ${result.scannedCode}';
+        _statusMessage = result.errorMessage ?? HuLookupService.notFoundMessage(result.scannedCode);
       });
     }
   }

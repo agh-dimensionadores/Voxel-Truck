@@ -153,7 +153,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Ejemplo: ${formatter.formatVolume(0.578)} · ${formatter.formatDimensionLine(120.5, 80, 60)}',
+                'Ejemplo: ${formatter.formatVolume(0.03216)} · ${formatter.formatDimensionLine(30, 20, 15)}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
