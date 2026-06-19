@@ -3,8 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:voxel_truck/data/mock_data.dart';
 import 'package:voxel_truck/models/truck.dart';
+import 'package:voxel_truck/services/hu_lookup_service.dart';
 import 'package:voxel_truck/state/truck_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
+import 'package:voxel_truck/utils/platform_utils.dart';
+import 'package:voxel_truck/widgets/barcode_camera_scanner.dart';
 import 'package:voxel_truck/widgets/common_widgets.dart';
 import 'package:voxel_truck/widgets/modern_surface.dart';
 import 'package:voxel_truck/widgets/truck_widgets.dart';
@@ -19,23 +22,120 @@ class TruckDetailScreen extends StatefulWidget {
 }
 
 class _TruckDetailScreenState extends State<TruckDetailScreen> {
+  final _scanController = TextEditingController();
+  final _scanFocusNode = FocusNode();
+  bool _isLookingUp = false;
+
   TruckController get _controller => TruckScope.of(context);
 
   Truck? get _truck => _controller.findById(widget.truckId);
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _requestScanFocus());
+  }
+
+  @override
+  void dispose() {
+    _scanController.dispose();
+    _scanFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _requestScanFocus() {
+    final truck = _truck;
+    if (truck != null && truck.isEditable && mounted) {
+      _scanFocusNode.requestFocus();
+    }
+  }
+
+  void _showScanFeedback(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.warning : AppColors.tealDark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _addHandlingUnit(HandlingUnit unit) async {
+    _controller.addHandlingUnit(widget.truckId, unit);
+    setState(() {});
+    _showScanFeedback('${unit.code} agregado');
+    _requestScanFocus();
+  }
+
+  Future<bool> _tryAddFromBarcode(String code) async {
+    final normalized = HuLookupService.normalizeCode(code);
+    if (normalized.isEmpty || _isLookingUp) return false;
+
+    final truck = _truck;
+    if (truck == null || !truck.isEditable) return false;
+
+    if (truck.handlingUnits.any((h) => h.code == normalized)) {
+      _showScanFeedback('$normalized ya está en el camión', isError: true);
+      return false;
+    }
+
+    setState(() => _isLookingUp = true);
+
+    final result = await HuLookupService.lookup(normalized);
+
+    if (!mounted) return false;
+
+    setState(() => _isLookingUp = false);
+
+    if (result.found && result.unit != null) {
+      await _addHandlingUnit(result.unit!);
+      return true;
+    }
+
+    _showScanFeedback('HU no encontrado: ${result.scannedCode}', isError: true);
+    return false;
+  }
+
+  Future<void> _onBarcodeSubmitted(String code) async {
+    _scanController.clear();
+    await _tryAddFromBarcode(code);
+    _requestScanFocus();
+  }
+
+  Future<void> _openCameraScan() async {
+    if (!supportsBarcodeCamera) {
+      await _scanHu();
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (context) => _CameraScanPage(
+          onCodeScanned: (code) async {
+            final added = await _tryAddFromBarcode(code);
+            if (added && context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+      ),
+    );
+    _requestScanFocus();
+  }
+
   Future<void> _scanHu() async {
     final unit = await context.push<HandlingUnit>('/scan/${widget.truckId}');
     if (unit != null && mounted) {
-      _controller.addHandlingUnit(widget.truckId, unit);
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${unit.code} agregado'),
-          backgroundColor: AppColors.tealDark,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+      final truck = _truck;
+      if (truck != null && truck.handlingUnits.any((h) => h.code == unit.code)) {
+        _showScanFeedback('${unit.code} ya está en el camión', isError: true);
+      } else {
+        await _addHandlingUnit(unit);
+      }
+    } else {
+      _requestScanFocus();
     }
   }
 
@@ -135,6 +235,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
               _controller.reopenTruck(widget.truckId);
               Navigator.pop(context);
               setState(() {});
+              _requestScanFocus();
             },
             child: const Text('Reanudar camión'),
           ),
@@ -222,7 +323,9 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           ),
         ],
       ),
-      body: ListView(
+      body: Stack(
+        children: [
+          ListView(
         padding: const EdgeInsets.fromLTRB(20, 100, 20, 32),
         children: [
           _TripHeader(
@@ -284,14 +387,27 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
             title: 'Bultos',
             count: truck.huCount,
             trailing: isEditable
-                ? TextButton.icon(
-                    onPressed: _scanHu,
-                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                    label: const Text('Escanear'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.teal,
-                      visualDensity: VisualDensity.compact,
-                    ),
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (supportsBarcodeCamera)
+                        IconButton(
+                          onPressed: _openCameraScan,
+                          tooltip: 'Escanear con cámara',
+                          icon: const Icon(Icons.photo_camera_outlined, size: 22),
+                          color: AppColors.teal,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      TextButton.icon(
+                        onPressed: _scanHu,
+                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                        label: const Text('Escanear'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.teal,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
                   )
                 : null,
           ),
@@ -317,7 +433,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
                   const Text('Sin bultos escaneados', style: TextStyle(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   const Text(
-                    'Use el botón de escaneo para agregar HU',
+                    'Escanee con cámara, pistola lectora o el botón Escanear',
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
@@ -338,12 +454,30 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           _buildScrollActions(truck, occupancy, validation),
         ],
       ),
+          if (isEditable)
+            Opacity(
+              opacity: 0,
+              child: SizedBox(
+                width: 1,
+                height: 1,
+                child: TextField(
+                  controller: _scanController,
+                  focusNode: _scanFocusNode,
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  textCapitalization: TextCapitalization.characters,
+                  onSubmitted: _onBarcodeSubmitted,
+                ),
+              ),
+            ),
+        ],
+      ),
       floatingActionButton: isEditable
           ? FloatingActionButton.extended(
-              onPressed: _scanHu,
+              onPressed: supportsBarcodeCamera ? _openCameraScan : _scanHu,
               elevation: 6,
-              icon: const Icon(Icons.qr_code_scanner_rounded),
-              label: const Text('Escanear'),
+              icon: Icon(supportsBarcodeCamera ? Icons.photo_camera_outlined : Icons.qr_code_scanner_rounded),
+              label: Text(supportsBarcodeCamera ? 'Cámara' : 'Escanear'),
             )
           : null,
     );
@@ -559,6 +693,49 @@ class _TraceabilityCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CameraScanPage extends StatelessWidget {
+  const _CameraScanPage({required this.onCodeScanned});
+
+  final Future<void> Function(String code) onCodeScanned;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1D26),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        title: const Text('Escanear con cámara'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(
+            children: [
+              Expanded(
+                child: BarcodeCameraScanner(onCodeScanned: onCodeScanned),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Apunte al código de barras del bulto',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
