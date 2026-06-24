@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:voxel_truck/config/app_config.dart';
-import 'package:voxel_truck/models/truck.dart';
+import 'package:voxel_truck/screens/truck_detail_screen.dart';
 import 'package:voxel_truck/services/hu_lookup_service.dart';
+import 'package:voxel_truck/state/truck_controller.dart';
 import 'package:voxel_truck/theme/app_colors.dart';
 import 'package:voxel_truck/utils/platform_utils.dart';
 import 'package:voxel_truck/widgets/barcode_camera_scanner.dart';
@@ -27,6 +28,8 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
 
   bool get _useCamera => supportsBarcodeCamera;
 
+  TruckController get _controller => TruckScope.of(context);
+
   @override
   void initState() {
     super.initState();
@@ -50,44 +53,41 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  Future<void> _lookupCode(String code) async {
-    final trimmed = code.trim().toUpperCase();
-    if (trimmed.isEmpty || _isSearching) return;
+  Future<void> _scanCode(String code) async {
+    final normalized = HuLookupService.normalizeCode(code);
+    if (normalized.isEmpty || _isSearching) return;
 
     setState(() {
       _isSearching = true;
-      _statusMessage = 'Buscando en Voxel Cam...';
+      _statusMessage = AppConfig.isApiConfigured
+          ? 'Registrando escaneo...'
+          : 'Buscando en Voxel Cam...';
       _found = false;
     });
 
-    final result = await HuLookupService.search(
-      trimmed,
-      onProgress: (message) {
-        if (mounted) setState(() => _statusMessage = message);
-      },
-    );
+    final unit = await _controller.agregarBulto(widget.truckId, normalized);
 
     if (!mounted) return;
 
-    if (result.found) {
-      final unit = result.unit!;
+    if (unit != null) {
       setState(() {
         _isSearching = false;
         _found = true;
-        _statusMessage = 'HU encontrado (${result.sourceLabel})';
+        _statusMessage = '${unit.code} agregado';
       });
       await Future<void>.delayed(const Duration(milliseconds: 400));
-      if (mounted) context.pop<HandlingUnit>(unit);
+      if (mounted) context.pop(true);
     } else {
       setState(() {
         _isSearching = false;
         _found = false;
-        _statusMessage = result.errorMessage ?? HuLookupService.notFoundMessage(result.scannedCode);
+        _statusMessage = _controller.errorMessage ??
+            HuLookupService.notFoundMessage(normalized);
       });
     }
   }
 
-  void _onSubmit(String value) => _lookupCode(value);
+  void _onSubmit(String value) => _scanCode(value);
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +111,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                 child: _useCamera
                     ? BarcodeCameraScanner(
                         enabled: !_isSearching,
-                        onCodeScanned: _lookupCode,
+                        onCodeScanned: _scanCode,
                       )
                     : Center(child: _ScannerPlaceholder(animation: _pulseController)),
               ),
@@ -129,7 +129,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
               const SizedBox(height: 8),
               Text(
                 AppConfig.isApiConfigured
-                    ? 'Los HU se consultan en Voxel Cam en tiempo real'
+                    ? 'El escaneo se registra en el servidor y bloquea el HU'
                     : 'Modo demo: HU-884521, HU-884522, PLT-00931, HU-771001',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -165,7 +165,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                           ),
                         )
                       : IconButton(
-                          onPressed: () => _lookupCode(_codeController.text),
+                          onPressed: () => _scanCode(_codeController.text),
                           icon: const Icon(Icons.search, color: AppColors.teal),
                         ),
                 ),
@@ -202,17 +202,19 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
                   ],
                 ),
               ],
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _isSearching ? null : () => _lookupCode('HU-884521'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.teal,
-                  side: const BorderSide(color: AppColors.teal),
-                  minimumSize: const Size(double.infinity, 48),
+              if (!AppConfig.isApiConfigured) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _isSearching ? null : () => _scanCode('HU-884521'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.teal,
+                    side: const BorderSide(color: AppColors.teal),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Simular escaneo demo'),
                 ),
-                icon: const Icon(Icons.play_circle_outline),
-                label: const Text('Simular escaneo demo'),
-              ),
+              ],
             ],
           ),
         ),

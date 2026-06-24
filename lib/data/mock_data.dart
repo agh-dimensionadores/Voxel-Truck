@@ -10,10 +10,10 @@ final sampleTrucks = [
   Truck(
     id: '1',
     tripNumber: 'VT-2026-0142',
-    logisticsCenter: 'CD Santiago Norte',
+    origen: 'CD Santiago Norte',
     destination: 'Concepción',
-    date: DateTime(2026, 6, 16),
     observations: 'Mercadería seca',
+    createdAt: DateTime(2026, 6, 16),
     handlingUnits: [
       const HandlingUnit(
         code: 'HU-884521',
@@ -22,6 +22,7 @@ final sampleTrucks = [
         height: 100,
         weight: 45.5,
         source: DimensionSource.voxelCam,
+        idRegistroOrigen: 'VL-DEMO-884521',
       ),
       const HandlingUnit(
         code: 'HU-884522',
@@ -30,6 +31,7 @@ final sampleTrucks = [
         height: 90,
         weight: 38.2,
         source: DimensionSource.voxelCam,
+        idRegistroOrigen: 'VL-DEMO-884522',
       ),
       const HandlingUnit(
         code: 'PLT-00931',
@@ -38,15 +40,16 @@ final sampleTrucks = [
         height: 150,
         weight: 320,
         source: DimensionSource.coresa,
+        idRegistroOrigen: '931',
       ),
     ],
   ),
   Truck(
     id: '2',
     tripNumber: 'VT-2026-0143',
-    logisticsCenter: 'CD Santiago Sur',
+    origen: 'CD Santiago Sur',
     destination: 'Valparaíso',
-    date: DateTime(2026, 6, 16),
+    createdAt: DateTime(2026, 6, 16),
     handlingUnits: [
       const HandlingUnit(
         code: 'HU-771001',
@@ -55,18 +58,20 @@ final sampleTrucks = [
         height: 30,
         weight: 5.2,
         source: DimensionSource.voxelCam,
+        idRegistroOrigen: 'VL-DEMO-771001',
       ),
     ],
   ),
   Truck(
     id: '3',
     tripNumber: 'VT-2026-0138',
-    logisticsCenter: 'CD Santiago Norte',
+    origen: 'CD Santiago Norte',
     destination: 'Antofagasta',
-    date: DateTime(2026, 6, 15),
+    createdAt: DateTime(2026, 6, 15),
     status: TruckStatus.enviado,
     savedOccupancyPercent: 85,
     closedAt: DateTime(2026, 6, 15, 14, 30),
+    sentAt: DateTime(2026, 6, 15, 16, 0),
     handlingUnits: [
       const HandlingUnit(
         code: 'HU-660012',
@@ -75,6 +80,7 @@ final sampleTrucks = [
         height: 120,
         weight: 52,
         source: DimensionSource.voxelCam,
+        idRegistroOrigen: 'VL-DEMO-660012',
       ),
     ],
   ),
@@ -88,6 +94,7 @@ const mockHuDatabase = {
     height: 100,
     weight: 45.5,
     source: DimensionSource.voxelCam,
+    idRegistroOrigen: 'VL-DEMO-884521',
   ),
   'HU-884522': HandlingUnit(
     code: 'HU-884522',
@@ -96,6 +103,7 @@ const mockHuDatabase = {
     height: 90,
     weight: 38.2,
     source: DimensionSource.voxelCam,
+    idRegistroOrigen: 'VL-DEMO-884522',
   ),
   'PLT-00931': HandlingUnit(
     code: 'PLT-00931',
@@ -104,6 +112,7 @@ const mockHuDatabase = {
     height: 150,
     weight: 320,
     source: DimensionSource.coresa,
+    idRegistroOrigen: '931',
   ),
   'HU-771001': HandlingUnit(
     code: 'HU-771001',
@@ -112,5 +121,6 @@ const mockHuDatabase = {
     height: 30,
     weight: 5.2,
     source: DimensionSource.voxelCam,
+    idRegistroOrigen: 'VL-DEMO-771001',
   ),
 };

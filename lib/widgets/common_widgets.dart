@@ -23,13 +23,11 @@ class HuListTile extends StatelessWidget {
     final sourceLabel = switch (unit.source) {
       DimensionSource.voxelCam => 'Voxel Cam',
       DimensionSource.coresa => 'Coresa',
-      DimensionSource.manual => 'Manual',
     };
 
     final sourceColor = switch (unit.source) {
       DimensionSource.voxelCam => AppColors.purple,
       DimensionSource.coresa => AppColors.teal,
-      DimensionSource.manual => AppColors.textSecondary,
     };
 
     return Padding(

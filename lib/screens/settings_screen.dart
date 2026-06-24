@@ -53,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             AppConfig.isApiConfigured
-                                ? '${AppConfig.apiBaseUrl}\nCliente ${AppConfig.clientId}'
+                                ? '${AppConfig.resolvedApiBaseUrl}\nCliente ${AppConfig.clientId}'
                                 : 'Faltan URL, token o client_id. Solo funcionan códigos demo.',
                             style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                           ),

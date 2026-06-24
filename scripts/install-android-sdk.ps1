@@ -30,7 +30,7 @@ function Ensure-Java {
     Refresh-Path
     $java = Get-Command java -ErrorAction SilentlyContinue
     if ($java) {
-        Write-Ok "Java encontrado: $(java -version 2>&1 | Select-Object -First 1)"
+        Write-Ok "Java encontrado"
         return
     }
 
@@ -81,7 +81,7 @@ function Ensure-CommandLineTools {
     }
     New-Item -ItemType Directory -Path $tempExtract -Force | Out-Null
 
-    Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+    Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing -TimeoutSec 600
     Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
 
     $latestDir = Join-Path $SdkRoot "cmdline-tools\latest"
@@ -106,35 +106,114 @@ function Ensure-CommandLineTools {
     return $sdkManager
 }
 
+function Download-FileWithRetry {
+    param(
+        [string]$Url,
+        [string]$OutFile,
+        [int]$Retries = 5
+    )
+
+    for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+        try {
+            if (Test-Path $OutFile) {
+                Remove-Item $OutFile -Force -ErrorAction SilentlyContinue
+            }
+
+            $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+            if ($curl) {
+                & curl.exe -s -f -L --retry 3 --retry-delay 3 --connect-timeout 30 `
+                    -o $OutFile $Url 2>$null
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) {
+                    return
+                }
+            }
+
+            Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec 600
+            if ((Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) {
+                return
+            }
+            throw "Archivo vacío"
+        } catch {
+            if ($attempt -ge $Retries) {
+                throw
+            }
+            Write-Host "  Reintento $attempt/$Retries (conexión interrumpida)..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 4
+        }
+    }
+}
+
 function Install-SdkPackageFromZip {
     param(
         [string]$Name,
         [string]$Url,
-        [string]$Dest
+        [string]$Dest,
+        [switch]$Optional
     )
 
     if (Test-Path $Dest) {
         Write-Ok "$Name ya instalado"
-        return
+        return $true
     }
 
     Write-Host "  Descargando $Name..."
     $zip = Join-Path $env:TEMP "$Name.zip"
     $extract = Join-Path $env:TEMP "$Name-extract"
 
-    Invoke-WebRequest -Uri $Url -OutFile $zip -UseBasicParsing
-    if (Test-Path $extract) {
-        Remove-Item $extract -Recurse -Force
+    try {
+        Download-FileWithRetry -Url $Url -OutFile $zip
+        if (Test-Path $extract) {
+            Remove-Item $extract -Recurse -Force
+        }
+        Expand-Archive -Path $zip -DestinationPath $extract -Force
+        New-Item -ItemType Directory -Path (Split-Path $Dest -Parent) -Force | Out-Null
+
+        $inner = Get-ChildItem $extract -Directory | Select-Object -First 1
+        Move-Item $inner.FullName $Dest -Force
+
+        Remove-Item $zip -Force -ErrorAction SilentlyContinue
+        Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Ok "$Name instalado"
+        return $true
+    } catch {
+        Remove-Item $zip -Force -ErrorAction SilentlyContinue
+        Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
+        if ($Optional) {
+            Write-Host "  !! $Name omitido (opcional): $($_.Exception.Message)" -ForegroundColor Yellow
+            return $false
+        }
+        throw
     }
-    Expand-Archive -Path $zip -DestinationPath $extract -Force
-    New-Item -ItemType Directory -Path (Split-Path $Dest -Parent) -Force | Out-Null
+}
 
-    $inner = Get-ChildItem $extract -Directory | Select-Object -First 1
-    Move-Item $inner.FullName $Dest
+function Install-SdkPackagesWithManager {
+    param(
+        [string]$SdkRoot,
+        [string]$SdkManager
+    )
 
-    Remove-Item $zip -Force -ErrorAction SilentlyContinue
-    Remove-Item $extract -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Ok "$Name instalado"
+    Write-Step "Instalando paquetes con sdkmanager"
+    $env:ANDROID_HOME = $SdkRoot
+    $env:ANDROID_SDK_ROOT = $SdkRoot
+
+    Write-Host "  Aceptando licencias..."
+    "y`ny`ny`ny`ny`ny`ny`ny`ny`n" | & $SdkManager --sdk_root=$SdkRoot --licenses 2>&1 | Out-Null
+
+    $packages = @(
+        "platform-tools",
+        "platforms;android-35",
+        "build-tools;35.0.1"
+    )
+
+    foreach ($pkg in $packages) {
+        Write-Host "  sdkmanager $pkg"
+        & $SdkManager --sdk_root=$SdkRoot $pkg 2>&1 | ForEach-Object { Write-Host "    $_" }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Err "sdkmanager falló en: $pkg"
+            return $false
+        }
+    }
+    return $true
 }
 
 function Install-SdkPackagesDirect {
@@ -145,14 +224,25 @@ function Install-SdkPackagesDirect {
     $packages = @(
         @{ Name = "platform-tools"; Url = "$base/platform-tools_r37.0.0-win.zip"; Dest = "$SdkRoot\platform-tools" },
         @{ Name = "platform-35"; Url = "$base/platform-35_r02.zip"; Dest = "$SdkRoot\platforms\android-35" },
-        @{ Name = "platform-36"; Url = "$base/platform-36_r02.zip"; Dest = "$SdkRoot\platforms\android-36" },
-        @{ Name = "build-tools-36.0.0"; Url = "$base/build-tools_r36_windows.zip"; Dest = "$SdkRoot\build-tools\36.0.0" },
         @{ Name = "build-tools-35.0.1"; Url = "$base/build-tools_r35.0.1_windows.zip"; Dest = "$SdkRoot\build-tools\35.0.1" },
-        @{ Name = "build-tools-28.0.3"; Url = "$base/build-tools_r28.0.3-windows.zip"; Dest = "$SdkRoot\build-tools\28.0.3" }
+        @{ Name = "platform-36"; Url = "$base/platform-36_r02.zip"; Dest = "$SdkRoot\platforms\android-36"; Optional = $true },
+        @{ Name = "build-tools-36.0.0"; Url = "$base/build-tools_r36_windows.zip"; Dest = "$SdkRoot\build-tools\36.0.0"; Optional = $true },
+        @{ Name = "build-tools-28.0.3"; Url = "$base/build-tools_r28.0.3-windows.zip"; Dest = "$SdkRoot\build-tools\28.0.3"; Optional = $true }
     )
 
     foreach ($pkg in $packages) {
-        Install-SdkPackageFromZip -Name $pkg.Name -Url $pkg.Url -Dest $pkg.Dest
+        $optional = $false
+        if ($pkg.ContainsKey('Optional')) { $optional = [bool]$pkg.Optional }
+        Install-SdkPackageFromZip -Name $pkg.Name -Url $pkg.Url -Dest $pkg.Dest -Optional:$optional | Out-Null
+    }
+
+    if (-not (Test-Path "$SdkRoot\platforms\android-35")) {
+        Write-Err "Falta platform-35, necesario para compilar."
+        exit 1
+    }
+    if (-not (Test-Path "$SdkRoot\build-tools\35.0.1") -and -not (Test-Path "$SdkRoot\build-tools\36.0.0")) {
+        Write-Err "Falta build-tools (35.0.1 o 36.0.0)."
+        exit 1
     }
 
     $licensesDir = Join-Path $SdkRoot "licenses"
@@ -166,6 +256,22 @@ function Install-SdkPackagesDirect {
             Set-Content -Path $path -Value $_.Hash -NoNewline
         }
     }
+}
+
+function Find-FlutterExe {
+    $cmd = Get-Command flutter -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $candidates = @(
+        "$env:LOCALAPPDATA\flutter\bin\flutter.bat",
+        "$env:USERPROFILE\flutter\bin\flutter.bat",
+        'C:\src\flutter\bin\flutter.bat',
+        'C:\flutter\bin\flutter.bat'
+    )
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+    return $null
 }
 
 function Configure-Environment {
@@ -191,9 +297,9 @@ function Configure-Environment {
     $env:ANDROID_SDK_ROOT = $SdkRoot
     Refresh-Path
 
-    $flutter = Get-Command flutter -ErrorAction SilentlyContinue
-    if ($flutter) {
-        flutter config --android-sdk $SdkRoot | Out-Null
+    $flutterExe = Find-FlutterExe
+    if ($flutterExe) {
+        & $flutterExe config --android-sdk $SdkRoot | Out-Null
         Write-Ok "Flutter configurado con ANDROID_SDK=$SdkRoot"
     }
 }
@@ -203,12 +309,28 @@ $sdkRoot = "$env:LOCALAPPDATA\Android\Sdk"
 New-Item -ItemType Directory -Path $sdkRoot -Force | Out-Null
 
 Ensure-Java
-Ensure-CommandLineTools -SdkRoot $sdkRoot | Out-Null
-Install-SdkPackagesDirect -SdkRoot $sdkRoot
+$sdkManager = Ensure-CommandLineTools -SdkRoot $sdkRoot
+
+$hasPlatform35 = Test-Path "$sdkRoot\platforms\android-35"
+$hasBuildTools = (Test-Path "$sdkRoot\build-tools\35.0.1") -or (Test-Path "$sdkRoot\build-tools\36.0.0")
+
+if (-not $hasPlatform35 -or -not $hasBuildTools) {
+    if (-not (Install-SdkPackagesWithManager -SdkRoot $sdkRoot -SdkManager $sdkManager)) {
+        Write-Host "  sdkmanager no completó todo, intentando descarga directa..." -ForegroundColor Yellow
+        Install-SdkPackagesDirect -SdkRoot $sdkRoot
+    }
+} else {
+    Write-Ok "Paquetes SDK principales ya instalados"
+}
 Configure-Environment -SdkRoot $sdkRoot
 
 Write-Step "Verificando instalación"
-flutter doctor -v
+$flutterExe = Find-FlutterExe
+if ($flutterExe) {
+    & $flutterExe doctor -v
+} else {
+    Write-Host "Flutter no está en PATH; reiniciá la terminal y ejecutá: flutter doctor -v"
+}
 
 Write-Host "`nListo. Ahora podés ejecutar:" -ForegroundColor Green
 Write-Host "  .\scripts\build-apk-para-celu.ps1 -ServirEnRed"

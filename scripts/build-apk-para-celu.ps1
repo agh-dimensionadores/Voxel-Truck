@@ -47,6 +47,22 @@ function Refresh-Path {
     $env:JAVA_TOOL_OPTIONS = "-Djavax.net.ssl.trustStoreType=Windows-ROOT"
 }
 
+function Find-FlutterExe {
+    $cmd = Get-Command flutter -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $candidates = @(
+        "$env:LOCALAPPDATA\flutter\bin\flutter.bat",
+        "$env:USERPROFILE\flutter\bin\flutter.bat",
+        'C:\src\flutter\bin\flutter.bat',
+        'C:\flutter\bin\flutter.bat'
+    )
+    foreach ($path in $candidates) {
+        if (Test-Path $path) { return $path }
+    }
+    return $null
+}
+
 function Ensure-AndroidLicenses {
     param([string]$SdkRoot)
 
@@ -81,10 +97,14 @@ function Find-AndroidSdk {
 }
 
 function Ensure-AndroidSdk {
+    param([string]$FlutterExe)
+
     $sdk = Find-AndroidSdk
     if ($sdk -and (Test-Path "$sdk\platform-tools\adb.exe")) {
         Write-Ok "Android SDK encontrado en: $sdk"
-        & flutter config --android-sdk $sdk | Out-Null
+        if ($FlutterExe) {
+            & $FlutterExe config --android-sdk $sdk | Out-Null
+        }
         return $sdk
     }
 
@@ -208,22 +228,22 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location $projectRoot
 
 Write-Step "Verificando Flutter"
-$flutter = Get-Command flutter -ErrorAction SilentlyContinue
-if (-not $flutter) {
+$flutterExe = Find-FlutterExe
+if (-not $flutterExe) {
     Write-Err "Flutter no está en el PATH."
-    Write-Host "Instalá Flutter y agregá C:\src\flutter\bin al PATH, luego reintentá."
+    Write-Host "Instalá Flutter o verificá: $env:LOCALAPPDATA\flutter\bin"
     exit 1
 }
-Write-Ok "Flutter: $(flutter --version | Select-Object -First 1)"
+Write-Ok "Flutter: $(& $flutterExe --version | Select-Object -First 1)"
 
 Write-Step "Verificando Android SDK (solo en la PC)"
-Ensure-AndroidSdk | Out-Null
+Ensure-AndroidSdk -FlutterExe $flutterExe | Out-Null
 
 Write-Step "Verificando licencias de Android"
 Ensure-AndroidLicenses -SdkRoot (Find-AndroidSdk)
 
 Write-Step "Instalando dependencias"
-flutter pub get
+& $flutterExe pub get
 
 Write-Step "Compilando APK release (puede tardar varios minutos la primera vez)"
 
@@ -247,7 +267,7 @@ if ($ClientId) {
     Write-Warn "Sin VOXEL_TRUCK_CLIENT_ID: la app usará datos demo"
 }
 
-flutter @buildArgs
+& $flutterExe @buildArgs
 
 $apkPath = Join-Path $projectRoot "build\app\outputs\flutter-apk\app-release.apk"
 if (-not (Test-Path $apkPath)) {

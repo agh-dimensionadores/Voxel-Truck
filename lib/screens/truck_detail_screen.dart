@@ -46,6 +46,7 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     super.initState();
     _scrollController.addListener(_updateCameraFabVisibility);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.refreshCamion(widget.truckId);
       _requestScanFocus();
       _updateCameraFabVisibility();
     });
@@ -93,14 +94,6 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     );
   }
 
-  Future<void> _addHandlingUnit(HandlingUnit unit) async {
-    _controller.addHandlingUnit(widget.truckId, unit);
-    setState(() {});
-    _showScanFeedback('${unit.code} agregado');
-    _requestScanFocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
-  }
-
   Future<bool> _tryAddFromBarcode(String code) async {
     final normalized = _scanGuard.prepare(code);
     if (normalized == null || _isLookingUp) return false;
@@ -108,24 +101,25 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     final truck = _truck;
     if (truck == null || !truck.isEditable) return false;
 
-    if (truck.handlingUnits.any((h) => h.code == normalized)) {
-      _showScanFeedback('$normalized ya está en el camión', isError: true);
-      return false;
-    }
-
     setState(() => _isLookingUp = true);
 
     try {
-      final result = await HuLookupService.search(normalized);
+      final unit = await _controller.agregarBulto(widget.truckId, normalized);
 
       if (!mounted) return false;
 
-      if (result.found && result.unit != null) {
-        await _addHandlingUnit(result.unit!);
+      if (unit != null) {
+        setState(() {});
+        _showScanFeedback('${unit.code} agregado');
+        _requestScanFocus();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
         return true;
       }
 
-      _showScanFeedback(result.errorMessage ?? HuLookupService.notFoundMessage(result.scannedCode), isError: true);
+      _showScanFeedback(
+        _controller.errorMessage ?? HuLookupService.notFoundMessage(normalized),
+        isError: true,
+      );
       return false;
     } finally {
       if (mounted) setState(() => _isLookingUp = false);
@@ -180,14 +174,10 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
   }
 
   Future<void> _scanHu() async {
-    final unit = await context.push<HandlingUnit>('/scan/${widget.truckId}');
-    if (unit != null && mounted) {
-      final truck = _truck;
-      if (truck != null && truck.handlingUnits.any((h) => h.code == unit.code)) {
-        _showScanFeedback('${unit.code} ya está en el camión', isError: true);
-      } else {
-        await _addHandlingUnit(unit);
-      }
+    final added = await context.push<bool>('/scan/${widget.truckId}');
+    if (added == true && mounted) {
+      setState(() {});
+      _requestScanFocus();
     } else {
       _requestScanFocus();
     }
@@ -217,17 +207,71 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             FilledButton(
-              onPressed: () {
-                _controller.closeTruck(widget.truckId, occupancyPercent: occupancy);
-                Navigator.pop(context);
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Camión cerrado · ${occupancy.toStringAsFixed(0)}% guardado'),
-                    backgroundColor: AppColors.purple,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+              onPressed: () async {
+                final ok = await _controller.closeTruck(
+                  widget.truckId,
+                  occupancyPercent: occupancy,
                 );
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                if (!mounted) return;
+                setState(() {});
+                if (ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Camión cerrado · ${occupancy.toStringAsFixed(0)}% guardado'),
+                      backgroundColor: AppColors.purple,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else if (_controller.errorMessage != null) {
+                  _showScanFeedback(_controller.errorMessage!, isError: true);
+                }
+              },
+              child: const Text('Cerrar camión'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (_controller.optimizationAlertWasSent(truck)) {
+      showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Cerrar camión'),
+          content: Text(
+            'La carga sigue sin optimizar (${occupancy.toStringAsFixed(0)}%), '
+            'pero la alerta por email ya fue enviada. '
+            'Podés cerrar el camión y marcarlo como enviado.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () async {
+                final ok = await _controller.closeTruck(
+                  widget.truckId,
+                  occupancyPercent: occupancy,
+                );
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                if (!mounted) return;
+                setState(() {});
+                if (ok) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Camión cerrado · ${occupancy.toStringAsFixed(0)}% guardado · listo para enviar',
+                      ),
+                      backgroundColor: AppColors.purple,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else if (_controller.errorMessage != null) {
+                  _showScanFeedback(_controller.errorMessage!, isError: true);
+                }
               },
               child: const Text('Cerrar camión'),
             ),
@@ -253,17 +297,26 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () {
-              _controller.closeTruck(widget.truckId, occupancyPercent: occupancy);
-              Navigator.pop(context);
-              setState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Alerta enviada · Camión en PENDIENTE'),
-                  backgroundColor: AppColors.warning,
-                  behavior: SnackBarBehavior.floating,
-                ),
+            onPressed: () async {
+              final ok = await _controller.closeTruck(
+                widget.truckId,
+                occupancyPercent: occupancy,
               );
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              if (!mounted) return;
+              setState(() {});
+              if (ok) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Alerta enviada · Camión en PENDIENTE'),
+                    backgroundColor: AppColors.warning,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if (_controller.errorMessage != null) {
+                _showScanFeedback(_controller.errorMessage!, isError: true);
+              }
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.warning),
             child: const Text('Cerrar camión'),
@@ -285,11 +338,17 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () {
-              _controller.reopenTruck(widget.truckId);
+            onPressed: () async {
+              final ok = await _controller.reopenTruck(widget.truckId);
+              if (!context.mounted) return;
               Navigator.pop(context);
+              if (!mounted) return;
               setState(() {});
-              _requestScanFocus();
+              if (ok) {
+                _requestScanFocus();
+              } else if (_controller.errorMessage != null) {
+                _showScanFeedback(_controller.errorMessage!, isError: true);
+              }
             },
             child: const Text('Reanudar camión'),
           ),
@@ -311,17 +370,23 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () {
-              _controller.markAsSent(widget.truckId);
+            onPressed: () async {
+              final ok = await _controller.markAsSent(widget.truckId);
+              if (!context.mounted) return;
               Navigator.pop(context);
+              if (!mounted) return;
               setState(() {});
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Camión marcado como ENVIADO'),
-                  backgroundColor: AppColors.purple,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              if (ok) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Camión marcado como ENVIADO'),
+                    backgroundColor: AppColors.purple,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if (_controller.errorMessage != null) {
+                _showScanFeedback(_controller.errorMessage!, isError: true);
+              }
             },
             child: const Text('Confirmar'),
           ),
@@ -343,8 +408,12 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
     final isEditable = truck.isEditable;
     final vehicle = truck.recommendedVehicle(vehicleTypes);
     final validation = truck.validateLoad(vehicleTypes);
+    final optimizationAlertAlreadySent = _controller.optimizationAlertWasSent(truck);
     final occupancy = truck.occupancyPercent(vehicle);
     final dateFormat = DateFormat('dd/MM/yyyy');
+    final createdLabel = truck.createdAt != null
+        ? dateFormat.format(truck.createdAt!)
+        : '—';
     final formatter = UnitFormatter(DisplaySettingsScope.of(context).settings);
 
     return Scaffold(
@@ -387,13 +456,17 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           _TripHeader(
             tripNumber: truck.tripNumber,
             destination: truck.destination,
-            logisticsCenter: truck.logisticsCenter,
-            date: dateFormat.format(truck.date),
+            origen: truck.origen,
+            createdLabel: createdLabel,
             observations: truck.observations,
           ),
           if (truck.status == TruckStatus.pendiente && truck.alertEmailSent) ...[
             const SizedBox(height: 16),
             _EmailAlertBanner(),
+          ],
+          if (isEditable && optimizationAlertAlreadySent) ...[
+            const SizedBox(height: 16),
+            _EmailAlertResumedBanner(),
           ],
           if (truck.savedOccupancyPercent != null) ...[
             const SizedBox(height: 16),
@@ -401,7 +474,10 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
           ],
           if (isEditable) ...[
             const SizedBox(height: 16),
-            LoadAlertBanner(validation: validation),
+            LoadAlertBanner(
+              validation: validation,
+              optimizationAlertAlreadySent: optimizationAlertAlreadySent,
+            ),
           ],
           const SizedBox(height: 16),
           if (vehicle != null) ...[
@@ -500,10 +576,15 @@ class _TruckDetailScreenState extends State<TruckDetailScreen> {
               (unit) => HuListTile(
                 unit: unit,
                 canDelete: isEditable,
-                onDelete: () {
-                  _controller.removeHandlingUnit(widget.truckId, unit.code);
-                  setState(() {});
-                  WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
+                onDelete: () async {
+                  final ok = await _controller.removeHandlingUnit(widget.truckId, unit.code);
+                  if (!mounted) return;
+                  if (ok) {
+                    setState(() {});
+                    WidgetsBinding.instance.addPostFrameCallback((_) => _updateCameraFabVisibility());
+                  } else if (_controller.errorMessage != null) {
+                    _showScanFeedback(_controller.errorMessage!, isError: true);
+                  }
                 },
               ),
             ),
@@ -597,15 +678,15 @@ class _TripHeader extends StatelessWidget {
   const _TripHeader({
     required this.tripNumber,
     required this.destination,
-    required this.logisticsCenter,
-    required this.date,
+    required this.origen,
+    required this.createdLabel,
     this.observations,
   });
 
   final String tripNumber;
   final String destination;
-  final String logisticsCenter;
-  final String date;
+  final String origen;
+  final String createdLabel;
   final String? observations;
 
   @override
@@ -658,8 +739,8 @@ class _TripHeader extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _HeaderChip(icon: Icons.warehouse_outlined, label: logisticsCenter),
-              _HeaderChip(icon: Icons.calendar_today_outlined, label: date),
+              _HeaderChip(icon: Icons.warehouse_outlined, label: origen),
+              _HeaderChip(icon: Icons.calendar_today_outlined, label: createdLabel),
               if (observations != null)
                 _HeaderChip(icon: Icons.notes_outlined, label: observations!),
             ],
@@ -718,6 +799,29 @@ class _EmailAlertBanner extends StatelessWidget {
             child: Text(
               'Alerta enviada por email. Reanudá el camión para ajustar la carga.',
               style: TextStyle(fontSize: 13, color: Color(0xFFB45309), fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmailAlertResumedBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ModernSurface(
+      padding: const EdgeInsets.all(14),
+      color: AppColors.purpleLight.withValues(alpha: 0.5),
+      border: Border.all(color: AppColors.purple.withValues(alpha: 0.2)),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: AppColors.purple, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Alerta de optimización ya enviada. Podés cerrar y enviar aunque la carga no esté optimizada.',
+              style: TextStyle(fontSize: 13, color: AppColors.purpleDark, fontWeight: FontWeight.w600),
             ),
           ),
         ],

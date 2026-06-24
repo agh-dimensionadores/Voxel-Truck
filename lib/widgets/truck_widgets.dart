@@ -40,9 +40,14 @@ class StatusBadge extends StatelessWidget {
 }
 
 class LoadAlertBanner extends StatelessWidget {
-  const LoadAlertBanner({super.key, required this.validation});
+  const LoadAlertBanner({
+    super.key,
+    required this.validation,
+    this.optimizationAlertAlreadySent = false,
+  });
 
   final LoadValidation validation;
+  final bool optimizationAlertAlreadySent;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +77,13 @@ class LoadAlertBanner extends StatelessWidget {
 
     final isExcess = validation == LoadValidation.excedida;
     final color = isExcess ? AppColors.error : AppColors.warning;
+    final message = optimizationAlertAlreadySent
+        ? (isExcess
+            ? 'Carga excedida · alerta ya enviada · podés cerrar y enviar'
+            : 'Subutilizado (<80%) · alerta ya enviada · podés cerrar y enviar')
+        : (isExcess
+            ? 'Carga excedida · alerta por email al cerrar'
+            : 'Subutilizado (<80%) · alerta por email al cerrar');
     return ModernSurface(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       color: (isExcess ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)).withValues(alpha: 0.7),
@@ -82,9 +94,7 @@ class LoadAlertBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isExcess
-                  ? 'Carga excedida · alerta por email al cerrar'
-                  : 'Subutilizado (<80%) · alerta por email al cerrar',
+              message,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -334,7 +344,7 @@ class TruckListTile extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        '${truck.logisticsCenter}  →  ${truck.destination}',
+                        '${truck.origen}  →  ${truck.destination}',
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
